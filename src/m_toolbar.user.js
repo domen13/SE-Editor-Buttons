@@ -27,22 +27,27 @@ EmbedCodeOnPage(function () {
     //  Utility Methods
     //===================
 
-    // Loads a script from a remote location that this script depends on.
-    function LoadDependentScript(url, callback) {
-
-        // Make sure that the script is not already loaded by checking for a
-        // <script> tag with the 'src' attribute set to the provided URL
-        if ($('script[src=' + url.replace(/(\W)/g, '\\$1') + ']').length)
-            callback();
-        else {
-
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = url;
-            script.onload = callback;
-            document.getElementsByTagName('head')[0].appendChild(script);
-
-        }
+    // Wait for element to appear in DOM.
+    // https://stackoverflow.com/a/61511955
+    function waitForElm(selector) {
+        return new Promise(resolve => {
+            if (document.querySelector(selector)) {
+                return resolve(document.querySelector(selector));
+            }
+    
+            const observer = new MutationObserver(mutations => {
+                if (document.querySelector(selector)) {
+                    observer.disconnect();
+                    resolve(document.querySelector(selector));
+                }
+            });
+    
+            // If you get "parameter 1 is not of type 'Node'" error, see https://stackoverflow.com/a/77855838/492336
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
     }
 
     // Adds an array of buttons to the toolbar, being careful not to
@@ -144,15 +149,11 @@ EmbedCodeOnPage(function () {
     // halirutan: The buttons will now appear when you edit a post in the review-queue
     if (location.pathname.match(/^\/(?:questions\/(?:ask|\d+)|review\/(?:close|first-posts|late-answers|low-quality-posts|reopen|suggested-edits)\/\d+|posts\/\d+\/edit|users\/edit|edit-tag-wiki)/) === null)
         return;
-
-    // This UserScript depends on LiveQuery, so load it now and continue
-    // processing the page after this is complete
-    LoadDependentScript('https://cdn.rawgit.com/hazzik/livequery/master/dist/jquery.livequery.min.js', function () {
-
+    
         // For each button row, inject our buttons into the toolbar
-        $('.wmd-button-row').livequery(function () {
-
-            var button_row = $(this);
+        waitForElm('.wmd-button-row').then((elm) => {
+            
+            var button_row = $(elm);
             var editor = button_row.parent().parent().find('.wmd-input');
 
             // Asks the user the specified question and inserts the answer into the editor with the specified markdown
@@ -816,5 +817,4 @@ EmbedCodeOnPage(function () {
             AddToolbarButtons(button_row, buttons);
 
         });
-    });
 });
