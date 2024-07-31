@@ -22,34 +22,6 @@ function EmbedCodeOnPage(code) {
 
 // This method call wraps the entire contents of the UserScript
 EmbedCodeOnPage(function () {
-
-    //===================
-    //  Utility Methods
-    //===================
-
-    // Wait for element to appear in DOM.
-    // https://stackoverflow.com/a/61511955
-    function waitForElm(selector) {
-        return new Promise(resolve => {
-            if (document.querySelector(selector)) {
-                return resolve(document.querySelector(selector));
-            }
-    
-            const observer = new MutationObserver(mutations => {
-                if (document.querySelector(selector)) {
-                    observer.disconnect();
-                    resolve(document.querySelector(selector));
-                }
-            });
-    
-            // If you get "parameter 1 is not of type 'Node'" error, see https://stackoverflow.com/a/77855838/492336
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        });
-    }
-
     // Adds an array of buttons to the toolbar, being careful not to
     // stomp on any toes (clobber any existing buttons that are there)
     // The 'buttons' array contains one or more items that look like this:
@@ -151,8 +123,27 @@ EmbedCodeOnPage(function () {
         return;
     
     // For each button row, inject our buttons into the toolbar
-    waitForElm('.wmd-button-row').then((elm) => {
-        
+    // https://stackoverflow.com/a/16726669
+    let observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (!mutation.addedNodes) return
+            for (let i = 0; i < mutation.addedNodes.length; i++) {
+                let node = mutation.addedNodes[i];
+                if (node.matches && node.matches('.wmd-button-row')) {
+                    InjectButtons(node);
+                }
+            }
+        })
+    })
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+        characterData: false
+    });
+
+    function InjectButtons(elm){        
         var button_row = $(elm);
         var editor = button_row.parent().parent().find('.wmd-input');
 
@@ -816,5 +807,5 @@ EmbedCodeOnPage(function () {
 
         AddToolbarButtons(button_row, buttons);
 
-    });
+    }
 });
